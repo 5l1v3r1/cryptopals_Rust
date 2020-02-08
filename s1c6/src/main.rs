@@ -20,6 +20,11 @@ impl ProbableComputations {
     }
 }
 
+struct DistanceAvg {
+    keysize: usize,
+    avg_dist: usize,
+}
+
 fn check_ascii_bytes(xstr: &Vec<u8>, kb: u8) -> Option<ProbableComputations> {
     let mut chk_bytes_obj = ProbableComputations::new();
     chk_bytes_obj.key_byte = kb;
@@ -65,50 +70,76 @@ fn check_ascii_bytes(xstr: &Vec<u8>, kb: u8) -> Option<ProbableComputations> {
 }
 
 fn getNormKeySize(ba1: &Vec<u8>, ba2: &Vec<u8>) -> usize {
-
+    println!("pew1 {:x} pew2 {:x}",ba1,ba2);
     let keysize = ba1.len();
     let hd: u64 = hamming::distance(ba1,ba2);
-    //let NormKeySize = hd as usize / keysize;
+    let NormKeySize = hd as usize / keysize;
 
-    //NormKeySize
-    hd as usize
+    NormKeySize
 }
-
+/*
+ * Get list of hamdist / keysize
+ * Get average of each Normalization
+ * Pop off of vector until size of block is larger than amount of vector elements left
+ * Put average and keysize into a DistanceAvg structure
+ * The DistanceAvg structure with the lowest avg distance is the correct keysize
+ */
 fn getKeySize(ct: &Vec<u8>) -> u64 {
+    println!("Getting keysize");
     let mut NormKeyScore: u64 = 100;
     let mut KeyScore: u64 = 0;
     let mut byteArray1 = Vec::<u8>::new();
     let mut byteArray2 = Vec::<u8>::new();
-    let mut byteArray3 = Vec::<u8>::new();
-    let mut byteArray4 = Vec::<u8>::new();
-    let mut KSArray = Vec::<usize>::new();
+    let mut distance_array: Vec<usize> = Vec::new();
+    let mut ct_new = ct.clone();
+    let mut distance_avgs: Vec<DistanceAvg> = Vec::new();
 
+    println!("Starting iter");
     for i in 2..38 {
-        for j in 0..i {
-            //println!("ba1 index: {}",j);
-            byteArray1.push(ct[j]);
-            //println!("ba2 index: {}", j+i);
-            byteArray2.push(ct[j+i]);
-
-            byteArray3.push(ct[j+(i*2)]);
-            byteArray4.push(ct[j+(i*3)]);
+        
+        let mut ct_iter = ct_new.clone();
+        println!("Cloned ct_iter");
+        let mut flag = 0;
+        let mut ch1: &[u8] = b"A";
+        let mut ch2: &[u8] = b"A";
+        println!("Starting chunk iter");
+        for ch in ct_iter.chunks(i) {
+        
+            if ch.len() != i {
+                println!("Chunk length: {}",ch.len());
+                break;
+            }
+            if flag == 0 {
+                println!("setting chunk1");
+                ch1 = ch;
+                println!("chunk1 set");
+                flag = 1;
+            } else {
+                ch2 = ch;
+                flag = 0;
+            }
+            println!("Attempting normkeysize {} {}",ch1,ch2);
+            distance_array.push(getNormKeySize(&ch1.to_vec(), &ch2.to_vec()));
+            println!("normkeysize complete");
         }
-        
-        KSArray.push(getNormKeySize(&byteArray1, &byteArray2));
-        
-        /*if (nks as u64) < NormKeyScore {
-            println!("New lowest nks: {}\tSet KeyScore: {}",nks,i);
-            NormKeyScore = nks as u64;
-            KeyScore = i as u64;
-        }*/
 
-        byteArray1.clear();
-        byteArray2.clear();
+        println!("Setting object params");
+        let mut sum = 0;
+        for d in &distance_array {
+            sum += d;
+        }
+
+        let avg = sum as u64 / distance_array.len() as u64;
+        
+        distance_avgs.push(DistanceAvg{
+            keysize: i,
+            avg_dist: avg as usize,
+        });
     }
-    let KS_sum: usize = KSArray.iter().sum();
-    KeyScore = KS_sum as u64 / KSArray.len() as u64;
-    println!("Normalized Bit Distance: {}",KeyScore);
-    KeyScore
+    println!("Sorting..");
+    distance_avgs.sort_by(|a,b| b.avg_dist.cmp(&a.avg_dist));
+
+    distance_avgs[0].keysize as u64
 }
 
 fn read_lines() -> Vec<String> {
@@ -134,7 +165,7 @@ fn main() {
 
     println!("CipherText Length: {}", ct.len());
 
-    let keysize = 29;//getKeySize(&ct); //<- Cant get working
+    let keysize = getKeySize(&ct); //<- Cant get working
 
     //println!("KeySize: {}",keysize);
 
