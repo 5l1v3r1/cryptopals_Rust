@@ -88,8 +88,6 @@ fn getKeySize(ct: &Vec<u8>) -> u64 {
     println!("Getting keysize");
     let mut NormKeyScore: u64 = 100;
     let mut KeyScore: u64 = 0;
-    let mut byteArray1 = Vec::<u8>::new();
-    let mut byteArray2 = Vec::<u8>::new();
     let mut distance_array: Vec<f64> = Vec::new();
     let mut ct_new = ct.clone();
     let mut distance_avgs: Vec<DistanceAvg> = Vec::new();
@@ -132,6 +130,7 @@ fn getKeySize(ct: &Vec<u8>) -> u64 {
         //println!("Setting object params");
         let da_len = distance_array.len();
         let sum: f64 = distance_array.iter().sum();
+        distance_array.clear();
         /*
         for d in &distance_array {
             sum += d;
@@ -145,8 +144,8 @@ fn getKeySize(ct: &Vec<u8>) -> u64 {
         });
     }
     //println!("Sorting..");
-    distance_avgs.sort_by(|a,b| b.avg_dist.cmp(&a.avg_dist));
-
+    distance_avgs.sort_by(|a,b| a.avg_dist.cmp(&b.avg_dist));
+    println!("Keysize: {} - Average: {}",distance_avgs[0].keysize,distance_avgs[0].avg_dist);
     distance_avgs[0].keysize as u64
 }
 
