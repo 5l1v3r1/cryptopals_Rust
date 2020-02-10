@@ -22,7 +22,7 @@ impl ProbableComputations {
 
 struct DistanceAvg {
     keysize: usize,
-    avg_dist: usize,
+    avg_dist: u64,
 }
 
 fn check_ascii_bytes(xstr: &Vec<u8>, kb: u8) -> Option<ProbableComputations> {
@@ -69,11 +69,11 @@ fn check_ascii_bytes(xstr: &Vec<u8>, kb: u8) -> Option<ProbableComputations> {
     })
 }
 
-fn getNormKeySize(ba1: &Vec<u8>, ba2: &Vec<u8>) -> usize {
-    println!("pew1 {:x} pew2 {:x}",ba1,ba2);
+fn getNormKeySize(ba1: &Vec<u8>, ba2: &Vec<u8>) -> f64 {
+    //println!("pew1 {:x} pew2 {:x}",ba1,ba2);
     let keysize = ba1.len();
     let hd: u64 = hamming::distance(ba1,ba2);
-    let NormKeySize = hd as usize / keysize;
+    let NormKeySize = hd as f64 / keysize as f64;
 
     NormKeySize
 }
@@ -90,78 +90,80 @@ fn getKeySize(ct: &Vec<u8>) -> u64 {
     let mut KeyScore: u64 = 0;
     let mut byteArray1 = Vec::<u8>::new();
     let mut byteArray2 = Vec::<u8>::new();
-    let mut distance_array: Vec<usize> = Vec::new();
+    let mut distance_array: Vec<f64> = Vec::new();
     let mut ct_new = ct.clone();
     let mut distance_avgs: Vec<DistanceAvg> = Vec::new();
 
-    println!("Starting iter");
-    for i in 2..38 {
+    //println!("Starting iter");
+    for i in 2..41 {
         
         let mut ct_iter = ct_new.clone();
-        println!("Cloned ct_iter");
-        let mut flag = 0;
-        let mut ch1: &[u8] = b"A";
-        let mut ch2: &[u8] = b"A";
-        println!("Starting chunk iter");
-        for ch in ct_iter.chunks(i) {
-        
-            if ch.len() != i {
-                println!("Chunk length: {}",ch.len());
+        //println!("Cloned ct_iter");
+
+        //println!("Starting chunk iter");
+        let mut ct_iter_obj = ct_iter.chunks(i);
+
+        loop {
+            let ch1 = match ct_iter_obj.next() {
+                Some(s) => s,
+                None => {break;},
+            };
+            let ch1_vec = ch1.to_vec();
+            //println!("Got chunk: {:?}",ch1_vec);
+            if ch1_vec.len() != i {
+                //println!("Chunk length: {}",ch1_vec.len());
                 break;
             }
-            if flag == 0 {
-                println!("setting chunk1");
-                ch1 = ch;
-                println!("chunk1 set");
-                flag = 1;
-            } else {
-                ch2 = ch;
-                flag = 0;
+            let ch2 = match ct_iter_obj.next() {
+                Some(s) => s,
+                None => {break;},
+            };
+            let ch2_vec = ch2.to_vec();
+            //println!("Got chunk2: {:?}",ch2_vec);
+            if ch2_vec.len() != i {
+                //println!("Chunk length: {}",ch2_vec.len());
+                break;
             }
-            println!("Attempting normkeysize {} {}",ch1,ch2);
-            distance_array.push(getNormKeySize(&ch1.to_vec(), &ch2.to_vec()));
-            println!("normkeysize complete");
+
+            distance_array.push(getNormKeySize(&ch1_vec, &ch2_vec));
+            //println!("normkeysize complete");
         }
 
-        println!("Setting object params");
-        let mut sum = 0;
+        //println!("Setting object params");
+        let da_len = distance_array.len();
+        let sum: f64 = distance_array.iter().sum();
+        /*
         for d in &distance_array {
             sum += d;
-        }
+        }*/
 
-        let avg = sum as u64 / distance_array.len() as u64;
-        
+        let avg = sum as f64 / da_len as f64;
+        println!("Got avg: {} - {}",avg,i);
         distance_avgs.push(DistanceAvg{
             keysize: i,
-            avg_dist: avg as usize,
+            avg_dist: avg as u64,
         });
     }
-    println!("Sorting..");
+    //println!("Sorting..");
     distance_avgs.sort_by(|a,b| b.avg_dist.cmp(&a.avg_dist));
 
     distance_avgs[0].keysize as u64
 }
 
-fn read_lines() -> Vec<String> {
+fn read_lines() -> Vec<u8> {
 
-    let f = File::open("6.txt").unwrap();
-    let f = BufReader::new(f);
-    let mut lines: Vec<String> = Vec::new();
+    let mut f = File::open("6.txt").unwrap();
+    let mut buffer: Vec<u8> = Vec::new();
+    f.read_to_end(&mut buffer).unwrap();
 
-    for line in f.lines() {
-        lines.push(line.unwrap().trim().to_string());
-    }
-
-    lines
+    buffer
 }
 
 fn main() {
 
     let mut ct: Vec<u8> = Vec::new();
 
-    for line in read_lines() {
-        ct = base64::decode(&line).unwrap()
-    }
+    ct = base64::decode(&read_lines()).unwrap();
 
     println!("CipherText Length: {}", ct.len());
 
