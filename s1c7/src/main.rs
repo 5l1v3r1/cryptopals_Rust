@@ -14,7 +14,7 @@ fn main() {
 
     let mut f = File::open("7.txt").unwrap();
     let mut buffer = Vec::<u8>::new();
-    f.read_to_end(&mut buffer);
+    f.read_to_end(&mut buffer).unwrap();
 
     let mut outbuf: [u8; 4096] = [0;4096];
     let mut inbuf = base64::decode(&buffer).unwrap();
