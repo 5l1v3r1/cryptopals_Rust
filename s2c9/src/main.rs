@@ -1,4 +1,3 @@
-
 fn pad_buffer(bytes: &mut Vec<u8>, block_size: usize) {
 
     let mut pad_byte: u8 = 0x00;
